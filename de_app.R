@@ -50,15 +50,24 @@ server <- function(input, output, session) {
   
   volcano_plot <-
     function(dataf) {
+      
+      dataf <- mutate(
+        dataf, 
+        volc_plot_status = case_when(log2FoldChange > 0 & padj < .1 ~ "UP",
+                                     log2FoldChange < 0 & padj < .1  ~ "DOWN",
+                                     padj > .1 ~ "NS"
+        ), .after=1)
+      
       dataf <- na.omit(dataf)
       
       # Volcano plot of padj by log2FoldChange 
       volcano <- ggplot(dataf, aes(x=log2FoldChange, 
                                              y=-log10(padj),
-                                   col = (abs(log2FoldChange) > 1.5) & (padj < 0.01))) + 
+                                             col = volc_plot_status)) +
         geom_point() +
-        labs(title = 'Volcano plot of DESeq2 differential expression results on Huntingtons Data') +
-        guides(color = guide_legend(title = "Passes Fold Change and Padj Thresholds"))
+        labs(title = 'Volcano plot of DESeq2 differential expression results for Huntingtons Data',
+             x = "log2FoldChange", y = "-log10(padj)") +
+        guides(color = guide_legend(title = "Expressed:"))
         
       return(volcano)
     }

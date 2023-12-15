@@ -4,9 +4,11 @@ library(ggplot2)
 library(tidyverse)
 library(colourpicker)
 library(DT)
+library(shinythemes)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  theme = shinytheme("simplex"),
   # Title page
   titlePanel("BF591 Final Project"),
   
@@ -35,23 +37,23 @@ ui <- fluidPage(
                  # Button for category
                  radioButtons(inputId = 'categorical', 'Choose the category to group by',
                               choices = c("Diagnosis",
-                                          "Vonsattel Grade"),
+                                          "Vonsattel.Grade"),
                               selected = 'Diagnosis'
                  ),
                  # Button for continuous variable 
                  radioButtons(inputId = 'continuous', 'Choose the column for the y-axis',
-                              choices = c("Post Mortem Interval",
-                                          "Age of Death",
-                                          "RNA Integrity Number",
-                                          "mRNA-seq Reads",
-                                          "Age of Onset",
+                              choices = c("Post.Mortem.Interval",
+                                          "Age.of.Death",
+                                          "RNA.Integrity.Number",
+                                          "mRNA.seq.Reads",
+                                          "Age.of.Onset",
                                           "Duration",
                                           "CAG",
-                                          "h-v striatal score",
-                                          "h-v cortical score"),
-                              selected = 'Age of Death'
+                                          "h-v.striatal.score",
+                                          "h-v.cortical.score"),
+                              selected = "Age.of.Death"
                  ),
-                 plotOutput('histograms'))
+                 plotOutput('plot'))
       )
     )
     
@@ -68,18 +70,31 @@ server <- function(input, output, session) {
     return(df)
   })
   
-  #' Diagnostic plots
+  #' 
   
   create_summary <-
     function(dataf) {
+      dataf <- data_frame(dataf)
       column_types <- sapply(dataf, typeof)
       third_col <- c()
       
+      get_column_summary <- function(column) {
+        if (is.numeric(column)) {
+          mean_value <- mean(column, na.rm = TRUE)
+          sd_value <- sd(column, na.rm = TRUE)
+          return(paste(mean_value, " (+/- ", sd_value, ")"))
+        } else {
+          unique_values <- unique(column)
+          return(toString(unique_values))
+        }
+      }
+      
+      third_col <- sapply(dataf, get_column_summary)
       
       summary <- data.frame(
         'Column Name' = colnames(dataf),
-        'Type' = column_types
-        #'Mean (sd) or Distinct Values' = third_col
+        'Type' = column_types,
+        'Mean (sd) or Distinct Values' = third_col
       )
       
       return(summary)
@@ -95,11 +110,10 @@ server <- function(input, output, session) {
   }
   
  
-  create_histogram <- function(dataf, continuous, categorical) {
-    plot <- ggplot(dataf, aes(x = !!sym(continuous), fill = !!sym(categorical))) +
-      geom_bar(position = "dodge", bins = 30, color = "black") +
-      labs(title = "Histogram of Continuous Variable Grouped by Category",
-           x = continuous, y = categorical) +
+  create_plot <- function(dataf, continuous, categorical) {
+    plot <- ggplot(dataf, aes(x = !!sym(categorical), y = !!sym(continuous))) +
+      geom_violin(fill = "skyblue", color = "black") +
+      labs(x = categorical, y = continuous, title = paste0("Violin Plot of ", continuous,"by ", categorical)) +
       theme_minimal()
     
     return(plot)
@@ -108,7 +122,7 @@ server <- function(input, output, session) {
   
   output$table <- renderDT({draw_table(load_data())})
   
-  output$histograms <- renderPlot({create_histogram(load_data(),input$continuous,input$categorical)})
+  output$plot <- renderPlot({create_plot(load_data(),input$continuous,input$categorical)})
   
   
   
