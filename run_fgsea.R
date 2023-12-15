@@ -4,7 +4,7 @@ library(SummarizedExperiment)
 library(DESeq2)
 library(biomaRt)
 library(testthat)
-#library(fgsea)
+library(fgsea)
 
 DESeq2_results <- read.csv("data/Diff_exp.csv")
 rownames(DESeq2_results) <- DESeq2_results$Column1
@@ -34,21 +34,20 @@ labeled_results <- mutate(labeled_results, genes = symbol)
 labeled_results <- labeled_results[,-3]
 
 
-genes <- DESeq2_results$genes
-statistic <- DESeq2_results$log2FoldChange
-names(statistic) <- genes
+genes <- labeled_results$genes
+rnk_list <- labeled_results$log2FoldChange
+names(rnk_list) <- labeled_results$genes
 
 # Create a named vector of statistics (logFC, p-values, etc.)
-gene_list <- list(DE = statistic)
+#gene_list <- list(DE = statistic)
 
 
-if (FALSE) {
+
 # Load gene sets data
-pathways <- gmtPathways("m2.cp.v2023.1.Mm.symbols.gmt")
+pathways <- gmtPathways("data/c5.all.v2023.2.Hs.symbols.gmt")
 
 # Run FGSEA
 fgsea_results <- fgsea(pathways = pathways, 
-             stats = gene_list,
+             stats = rnk_list,
              minSize = 15,
              maxSize = 500)
-}
