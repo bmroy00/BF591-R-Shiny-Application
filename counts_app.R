@@ -33,7 +33,7 @@ ui <- fluidPage(
       
       sliderInput(inputId = 'non_zero_slider', min = 0, max = 69,
                   label = 'Include Genes with at least X non-zero samples:',
-                  value = 10,
+                  value = 50,
                   step = 1),
       
       # Button to generate plots and table
@@ -48,9 +48,13 @@ ui <- fluidPage(
                  plotOutput("zeros_plot")),
         tabPanel("Heatmap", plotOutput('heatmap')),
         tabPanel("PCA",
-                 sliderInput(inputId = 'pca_slider', min = 1, max = 10,
+                 sliderInput(inputId = 'pca_slider1', min = 1, max = 10,
                              label = 'Choose N Principal Components to Plot',
-                             value = 3,
+                             value = 1,
+                             step = 1),
+                 sliderInput(inputId = 'pca_slider2', min = 1, max = 10,
+                             label = 'Choose N Principal Components to Plot',
+                             value = 2,
                              step = 1),
                  plotOutput('pca'))
       )
@@ -78,7 +82,7 @@ server <- function(input, output, session) {
       zeros_count <- apply(dataf[,-1] != 0, 1, sum)
       
       plot <- ggplot(dataf, aes(x = log2(medians), y = zeros_count, 
-                        col = zeros_count > non_zero_slider)) +
+                        col = zeros_count >= non_zero_slider)) +
         geom_point() +
         labs(x = "log2(Median Counts)", y = "Number of Non-Zeros") +
         title("Median Counts vs. Number of Non-Zeros") +
@@ -177,53 +181,27 @@ server <- function(input, output, session) {
     return(counts_heatmap)
   }
   
-  pca_plot <- function(dataf, var_slider, non_zero_slider, pca_slider) {
-    variances <- apply(dataf[,-1], 1, var)
-    zeros_count <- apply(dataf[,-1] != 0, 1, sum)
-    
-    proportion_variance <- variances/sum(variances)
-    
-    var_filter <- which(proportion_variance >= var_slider/100)
-    var_gene_names <- rownames(dataf)[var_filter]
-    var_filtered_df <- dataf[var_gene_names, ]
-    
-    # Include genes with at least X non-zero samples
-    non_zero_samples <- apply(var_filtered_df[,-1] != 0, 1, sum)
-    genes_nonzero <- which(non_zero_samples >= non_zero_slider)
-    genes_names_nonzero <- rownames(dataf)[genes_nonzero]
-    filtered_counts <- dataf[genes_names_nonzero, ]
-    
-    pca_result <- prcomp(filtered_counts)  # Transpose the count data if necessary
+  pca_plot <- function(dataf, var_slider, non_zero_slider, pca_slider1, pca_slider2) {
+
+    pca_result <- prcomp(dataf[,-1])  # Transpose the count data if necessary
     
     # Number of top principal components to plot
-    n <- pca_slider  # Replace with the desired number of top principal components
+    pc1 <- pca_slider1 
+    pc2 <- pca_slider2
     
     # Extract top n principal components
-    top_pcs <- pca_result$x[, 1:n]
+    pca_df <- as.data.frame(pca_result$x[, pc1:pc2])
     
-    # Convert to a dataframe for plotting
-    df_pcs <- as.data.frame(top_pcs)
+    variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
     
-    # Add sample IDs (assuming samples are in columns)
-    df_pcs$Sample <- paste("Sample", 1:num_samples)
+    PC1 <- paste0("PC", pc1)
+    PC2 <- paste0("PC", pc2)
     
-    # Melt the data for beeswarm plot
-    library(reshape2)
-    melted_pcs <- melt(df_pcs, id.vars = "Sample")
-    
-    # Plotting top n principal components using beeswarm plot
-    library(ggplot2)
-    library(beeswarm)
-    
-    ggplot(melted_pcs, aes(x = variable, y = value, color = Sample)) +
-      geom_beeswarm() +
-      labs(title = paste("Top", n, "Principal Components Beeswarm Plot"),
-           x = "Principal Component",
-           y = "Value",
-           color = "Sample") +
-      theme_minimal()
-    
-   
+    pca <- ggplot(data = pca_df, aes(x = PC1, y = PC2)) +
+      geom_point() +
+      labs(x = paste0(PC1, "(", round(variance_explained[pc1] * 100, 2), "%)"), 
+           y = paste0(PC2, "(", round(variance_explained[pc2] * 100, 2), "%)")) +
+      ggtitle(paste0("PCA: Principal Components ", pc1, " vs. ", pc2))
     
     return(pca)
   }
@@ -234,7 +212,7 @@ server <- function(input, output, session) {
   
   output$heatmap <- renderPlot({make_heatmap(load_data(),input$var_slider,input$non_zero_slider)})
   
-  output$pca <- renderPlot({pca_plot(load_data(),input$var_slider,input$non_zero_slider,input$pca_slider)})
+  output$pca <- renderPlot({pca_plot(load_data(),input$var_slider,input$non_zero_slider,input$pca_slider1, input$pca_slider2)})
   
   
 }

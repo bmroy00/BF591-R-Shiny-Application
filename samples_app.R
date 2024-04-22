@@ -10,7 +10,7 @@ library(shinythemes)
 ui <- fluidPage(
   theme = shinytheme("simplex"),
   # Title page
-  titlePanel("BF591 Final Project"),
+  titlePanel("Samples"),
   
   
   sidebarLayout(
